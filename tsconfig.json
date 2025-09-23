@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",                          // modern JS features
+        "module": "CommonJS",                        // or "ESNext" for ESM packages
+        "declaration": true,                         // emit *.d.ts for consumers
+        "declarationMap": true,                      // link .d.ts to .ts for editors
+        "sourceMap": true,                           // useful for debugging
+        "rootDir": "./src",                          // where your source files live
+        "strict": true,                              // all strict type checks
+        "esModuleInterop": true,                     // default import compatibility
+        "moduleResolution": "node",                  // Node.js-style module lookup
+        "resolveJsonModule": true,                   // allow importing JSON files
+        "skipLibCheck": true,                        // skip type checking node_modules
+        "forceConsistentCasingInFileNames": true     // case-sensitive import paths
+    },
+    "include": ["src/**/*"],
+    "exclude": ["dist", "node_modules", "**/*.test.ts"]
+}
