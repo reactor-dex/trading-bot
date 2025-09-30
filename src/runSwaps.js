@@ -47,7 +47,8 @@ async function runSwapUSDCIn() {
     const poolId = [baseToken, quoteToken, feeTier];
     let tokenIn = baseToken;
     let tokenOut = quoteToken;
-    let amountIn = 1000000000;
+    let usdcDecimals = 6;
+    let amountIn = 1000 * 10 ** usdcDecimals;
     let minAmountOut = 0;
     let swapRes = await (0, reactor_sdk_ts_1.swapExactIn)(REACTOR_CONTRACT_ADDRESS, wallet, poolId, tokenIn, tokenOut, amountIn, minAmountOut);
     console.log(`USDC swap exact in success: ${swapRes.isStatusSuccess}`);
@@ -59,7 +60,8 @@ async function runSwapFUELIn() {
     const poolId = [baseToken, quoteToken, feeTier];
     let tokenIn = quoteToken;
     let tokenOut = baseToken;
-    let amountIn = 1000000000;
+    let fuelDecimals = 9;
+    let amountIn = 180000 * 10 ** fuelDecimals;
     let minAmountOut = 0;
     let swapRes = await (0, reactor_sdk_ts_1.swapExactIn)(REACTOR_CONTRACT_ADDRESS, wallet, poolId, tokenIn, tokenOut, amountIn, minAmountOut);
     console.log(`FUEL swap exact in success: ${swapRes.isStatusSuccess}`);
