@@ -89,10 +89,10 @@ async function runSwaps(wallet: Account) {
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
     ]);
 
-    if (baseTokenBalance.gt(0)) {
+    if (Decimal(baseTokenBalance.toString()).div(10 ** 9).gt(3000)) {
         await runSwapBaseTokenIn(wallet)
         await runSwapQuoteTokenIn(wallet)
-    } else {
+    } else if (Decimal(quoteTokenBalance.toString()).div(10 ** 6).gt(10)) {
         await runSwapQuoteTokenIn(wallet)
         await runSwapBaseTokenIn(wallet)
     }
