@@ -1,3 +1,6 @@
+import cors from 'cors';
+import express from 'express';
+
 import * as dotenv from 'dotenv';
 import { Account, BigNumberish, Provider, Wallet } from 'fuels';
 import { FeeAmount, swapExactIn } from 'reactor-sdk-ts';
@@ -66,4 +69,18 @@ async function runSwaps() {
     await runSwapQuoteTokenIn()
 }
 
-runSwaps()
+const app = express();
+
+app.use(cors());
+
+app.use(express.json());
+
+app.listen(3333, () => {
+    console.log('Server is running on port 3000');
+
+    runSwaps();
+});
+
+app.get('/', (req, res) => {
+    res.end('ok');
+});
