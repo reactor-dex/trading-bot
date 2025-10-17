@@ -87,7 +87,7 @@ async function runSwaps(wallet: Account) {
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
         wallet.getBalance(ETH_ASSET!!),
     ]);
-    bot.api.sendMessage('@reactor_bot_status', `Swaps completed! FUEL ${baseTokenBalance.div(10 ** 9).toString()} USDC ${quoteTokenBalance.div(10 ** 6).toString()} ETH ${ethBalance.div(10 ** 9).toString()}`);
+    bot.api.sendMessage('@reactor_bot_status', `(${wallet.address.b256Address}): Swaps completed! FUEL ${baseTokenBalance.div(10 ** 9).toString()} USDC ${quoteTokenBalance.div(10 ** 6).toString()} ETH ${ethBalance.div(10 ** 9).toString()}`);
 }
 
 const app = express();
