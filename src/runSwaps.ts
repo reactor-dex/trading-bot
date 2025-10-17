@@ -4,6 +4,7 @@ import express from 'express';
 import * as dotenv from 'dotenv';
 import { Account, BigNumberish, Provider, Wallet } from 'fuels';
 import { FeeAmount, swapExactIn } from 'reactor-sdk-ts';
+import { Bot } from 'grammy';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const {
     POOL_QUOTE_TOKEN,
     BASE_TOKEN_IN_SWAP_AMOUNT,
     QUOTE_TOKEN_IN_SWAP_AMOUNT,
+    TG_TOKEN,
 } = process.env;
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
@@ -65,7 +67,7 @@ async function runSwapQuoteTokenIn(wallet: Account) {
 }
 
 async function runSwaps(wallet: Account) {
-    const [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+    let [baseTokenBalance, quoteTokenBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
     ]);
@@ -77,6 +79,12 @@ async function runSwaps(wallet: Account) {
         await runSwapQuoteTokenIn(wallet)
         await runSwapBaseTokenIn(wallet)
     }
+
+    [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+        wallet.getBalance(POOL_BASE_TOKEN!!),
+        wallet.getBalance(POOL_QUOTE_TOKEN!!),
+    ]);
+    bot.api.sendMessage('@reactor_bot_status', `Swaps completed! FUEL ${baseTokenBalance.div(10 ** 9).toString()} USDC ${quoteTokenBalance.div(10 ** 6).toString()}`);
 }
 
 const app = express();
@@ -85,8 +93,16 @@ app.use(cors());
 
 app.use(express.json());
 
+const bot = new Bot(TG_TOKEN!!);
+
 app.listen(Number(process.env.PORT) || 8080, () => {
     console.log(`Server is running on port ${process.env.PORT || 8080}`);
+
+    bot.start({
+        onStart: () => {
+            console.log('Bot started!');
+        }
+    });
 
     const wallets = [
         process.env.AMM_PRIVATE_KEY,
