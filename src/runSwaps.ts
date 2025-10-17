@@ -65,8 +65,18 @@ async function runSwapQuoteTokenIn() {
 }
 
 async function runSwaps() {
-    await runSwapBaseTokenIn()
-    await runSwapQuoteTokenIn()
+    const [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+        wallet.getBalance(POOL_BASE_TOKEN!!),
+        wallet.getBalance(POOL_QUOTE_TOKEN!!),
+    ]);
+
+    if (baseTokenBalance.gt(0)) {
+        await runSwapBaseTokenIn()
+        await runSwapQuoteTokenIn()
+    } else {
+        await runSwapQuoteTokenIn()
+        await runSwapBaseTokenIn()
+    }
 }
 
 const app = express();
