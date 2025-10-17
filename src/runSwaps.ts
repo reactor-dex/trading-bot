@@ -21,6 +21,7 @@ const {
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
 const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
+const ETH_ASSET = '0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07';
 
 async function runSwapBaseTokenIn(wallet: Account) {
     const baseToken = POOL_BASE_TOKEN!!
@@ -80,11 +81,13 @@ async function runSwaps(wallet: Account) {
         await runSwapBaseTokenIn(wallet)
     }
 
-    [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+    let ethBalance;
+    [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
+        wallet.getBalance(ETH_ASSET!!),
     ]);
-    bot.api.sendMessage('@reactor_bot_status', `Swaps completed! FUEL ${baseTokenBalance.div(10 ** 9).toString()} USDC ${quoteTokenBalance.div(10 ** 6).toString()}`);
+    bot.api.sendMessage('@reactor_bot_status', `Swaps completed! FUEL ${baseTokenBalance.div(10 ** 9).toString()} USDC ${quoteTokenBalance.div(10 ** 6).toString()} ETH ${ethBalance.div(10 ** 9).toString()}`);
 }
 
 const app = express();
