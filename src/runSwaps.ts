@@ -84,7 +84,7 @@ app.listen(3333, () => {
         } catch (error) {
             console.error(error);
         }
-    }, 1000);
+    }, Number(process.env.SWAP_INTERVAL || 1000));
 }).on('error', (err) => {
     console.error(err);
 });
