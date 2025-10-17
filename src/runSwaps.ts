@@ -88,7 +88,18 @@ app.use(express.json());
 app.listen(Number(process.env.PORT) || 8080, () => {
     console.log(`Server is running on port ${process.env.PORT || 8080}`);
 
-    const wallets = process.env.AMM_WALLETS?.split(',') || [process.env.AMM_PRIVATE_KEY!!];
+    const wallets = [
+        process.env.AMM_PRIVATE_KEY,
+        process.env.AMM_PRIVATE_KEY_1,
+        process.env.AMM_PRIVATE_KEY_2,
+        process.env.AMM_PRIVATE_KEY_3,
+        process.env.AMM_PRIVATE_KEY_4,
+        process.env.AMM_PRIVATE_KEY_5,
+        process.env.AMM_PRIVATE_KEY_6,
+        process.env.AMM_PRIVATE_KEY_7,
+        process.env.AMM_PRIVATE_KEY_8,
+        process.env.AMM_PRIVATE_KEY_9,
+    ].filter(wallet => wallet !== undefined);
 
     for (const wallet of wallets) {
         setInterval(async () => {
