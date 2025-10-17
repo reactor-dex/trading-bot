@@ -20,7 +20,7 @@ const {
 const provider = new Provider(AMM_PROVIDER_URL!!);
 const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
 
-async function runSwapBaseTokenIn() {
+async function runSwapBaseTokenIn(wallet: Account) {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
     const feeTier = FeeAmount.LOW
@@ -42,7 +42,7 @@ async function runSwapBaseTokenIn() {
     console.log(`swap base exact in success: ${swapRes.isStatusSuccess}`)
 }
 
-async function runSwapQuoteTokenIn() {
+async function runSwapQuoteTokenIn(wallet: Account) {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
     const feeTier = FeeAmount.LOW
@@ -64,18 +64,18 @@ async function runSwapQuoteTokenIn() {
     console.log(`swap quote exact in success: ${swapRes.isStatusSuccess}`)
 }
 
-async function runSwaps() {
+async function runSwaps(wallet: Account) {
     const [baseTokenBalance, quoteTokenBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
     ]);
 
     if (baseTokenBalance.gt(0)) {
-        await runSwapBaseTokenIn()
-        await runSwapQuoteTokenIn()
+        await runSwapBaseTokenIn(wallet)
+        await runSwapQuoteTokenIn(wallet)
     } else {
-        await runSwapQuoteTokenIn()
-        await runSwapBaseTokenIn()
+        await runSwapQuoteTokenIn(wallet)
+        await runSwapBaseTokenIn(wallet)
     }
 }
 
@@ -88,13 +88,17 @@ app.use(express.json());
 app.listen(Number(process.env.PORT) || 8080, () => {
     console.log(`Server is running on port ${process.env.PORT || 8080}`);
 
-    setInterval(async () => {
-        try {   
-            await runSwaps();
-        } catch (error) {
-            console.error(error);
-        }
-    }, Number(process.env.SWAP_INTERVAL || 1000));
+    const wallets = process.env.AMM_WALLETS?.split(',') || [process.env.AMM_PRIVATE_KEY!!];
+
+    for (const wallet of wallets) {
+        setInterval(async () => {
+            try {   
+                await runSwaps(Wallet.fromPrivateKey(wallet, provider));
+            } catch (error) {
+                console.error(error);
+            }
+        }, Number(process.env.SWAP_INTERVAL || 1000));
+    }
 }).on('error', (err) => {
     console.error(err);
 });
