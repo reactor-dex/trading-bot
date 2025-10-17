@@ -78,7 +78,15 @@ app.use(express.json());
 app.listen(3333, () => {
     console.log('Server is running on port 3333');
 
-    runSwaps();
+    setInterval(async () => {
+        try {   
+            await runSwaps();
+        } catch (error) {
+            console.error(error);
+        }
+    }, 1000);
+}).on('error', (err) => {
+    console.error(err);
 });
 
 app.get('/', (req, res) => {
