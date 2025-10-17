@@ -44,6 +44,13 @@ async function runSwapBaseTokenIn(wallet: Account) {
         minAmountOut
     );
     console.log(`swap base exact in success: ${swapRes.isStatusSuccess}`)
+
+    const [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
+        wallet.getBalance(POOL_BASE_TOKEN!!),
+        wallet.getBalance(POOL_QUOTE_TOKEN!!),
+        wallet.getBalance(ETH_ASSET!!),
+    ]);
+    bot.api.sendMessage('@reactor_bot_status', `(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
 }
 
 async function runSwapQuoteTokenIn(wallet: Account) {
@@ -66,6 +73,14 @@ async function runSwapQuoteTokenIn(wallet: Account) {
         minAmountOut
     );
     console.log(`swap quote exact in success: ${swapRes.isStatusSuccess}`)
+
+    const [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
+        wallet.getBalance(POOL_BASE_TOKEN!!),
+        wallet.getBalance(POOL_QUOTE_TOKEN!!),
+        wallet.getBalance(ETH_ASSET!!),
+    ]);
+    bot.api.sendMessage('@reactor_bot_status', `(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
+
 }
 
 async function runSwaps(wallet: Account) {
@@ -81,14 +96,6 @@ async function runSwaps(wallet: Account) {
         await runSwapQuoteTokenIn(wallet)
         await runSwapBaseTokenIn(wallet)
     }
-
-    let ethBalance;
-    [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
-        wallet.getBalance(POOL_BASE_TOKEN!!),
-        wallet.getBalance(POOL_QUOTE_TOKEN!!),
-        wallet.getBalance(ETH_ASSET!!),
-    ]);
-    bot.api.sendMessage('@reactor_bot_status', `(${wallet.address.b256Address}): Swaps completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
 }
 
 const app = express();
