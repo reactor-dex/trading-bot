@@ -4,7 +4,8 @@
     "version": "1.0.0",
     "scripts": {
         "build": "tsc",
-        "lint": "eslint ."
+        "lint": "eslint .",
+        "start": "npx -y tsx ./src/runSwaps.ts"
     },
     "dependencies": {
         "@typescript-eslint/eslint-plugin": "^8.26.0",
