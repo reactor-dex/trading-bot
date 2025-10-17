@@ -28,7 +28,7 @@ async function runSwapBaseTokenIn() {
 
     let tokenIn = baseToken
     let tokenOut = quoteToken
-    let amountIn = BASE_TOKEN_IN_SWAP_AMOUNT!!
+    let balance = await wallet.getBalance(baseToken);
     let minAmountOut = 0
     let swapRes = await swapExactIn(
         REACTOR_CONTRACT_ADDRESS!!,
@@ -36,7 +36,7 @@ async function runSwapBaseTokenIn() {
         poolId,
         tokenIn,
         tokenOut,
-        amountIn,
+        balance,
         minAmountOut
     );
     console.log(`swap base exact in success: ${swapRes.isStatusSuccess}`)
@@ -50,7 +50,7 @@ async function runSwapQuoteTokenIn() {
 
     let tokenIn = quoteToken
     let tokenOut = baseToken
-    let amountIn = QUOTE_TOKEN_IN_SWAP_AMOUNT!!
+    let balance = await wallet.getBalance(quoteToken);
     let minAmountOut = 0
     let swapRes = await swapExactIn(
         REACTOR_CONTRACT_ADDRESS!!,
@@ -58,7 +58,7 @@ async function runSwapQuoteTokenIn() {
         poolId,
         tokenIn,
         tokenOut,
-        amountIn,
+        balance,
         minAmountOut
     );
     console.log(`swap quote exact in success: ${swapRes.isStatusSuccess}`)
