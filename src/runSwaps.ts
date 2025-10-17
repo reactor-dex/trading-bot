@@ -75,8 +75,8 @@ app.use(cors());
 
 app.use(express.json());
 
-app.listen(3333, () => {
-    console.log('Server is running on port 3333');
+app.listen(Number(process.env.PORT) || 8080, () => {
+    console.log(`Server is running on port ${process.env.PORT || 8080}`);
 
     setInterval(async () => {
         try {   
