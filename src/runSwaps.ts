@@ -101,8 +101,13 @@ async function fetchBalancesRetry(wallet: Account) {
         ]);
     } catch (error) {
         console.log('RETRY FETCH BALANCES ERROR:', error);
-        return [];
-        // return await fetchBalancesRetry(wallet);
+        // return [];
+        await new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve(0);
+            }, 1000);
+        });
+        return await fetchBalancesRetry(wallet);
     }
 }
 
@@ -120,7 +125,7 @@ async function runSwaps(wallet: Account) {
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        // [baseTokenBalance, quoteTokenBalance] = await fetchBalancesRetry(wallet);
+        [baseTokenBalance, quoteTokenBalance] = await fetchBalancesRetry(wallet);
     }
 
     if (baseTokenBalance && quoteTokenBalance) {
@@ -165,11 +170,14 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         process.env.AMM_PRIVATE_KEY_9,
     ].filter(wallet => wallet !== undefined);
 
+    let i = 0;
     for (const wallet of wallets) {
         setInterval(async () => {
-            try { 
-                await runSwaps(Wallet.fromPrivateKey(wallet, provider));
-                console.log('SWAP SUCCESS');
+            try {
+                setTimeout(async () => {
+                    await runSwaps(Wallet.fromPrivateKey(wallet, provider));
+                    console.log('SWAP SUCCESS');
+                }, i += 200);
             } catch (error) {
                 console.log('SWAP ERROR: ', error);
             }
