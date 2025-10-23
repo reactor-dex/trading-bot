@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 
 import * as dotenv from 'dotenv';
-import { Account, BigNumberish, Provider, Wallet } from 'fuels';
+import { Account, BigNumberish, BN, Provider, Wallet } from 'fuels';
 import { FeeAmount, swapExactIn } from 'reactor-sdk-ts';
 import { Bot } from 'grammy';
 import Decimal from 'decimal.js';
@@ -90,20 +90,41 @@ async function runSwapQuoteTokenIn(wallet: Account) {
     await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
 }
 
+async function fetchBalancesRetry(baseTokenBalance: BigNumberish, quoteTokenBalance: BigNumberish) {
+    console.log('RETRY FETCH BALANCES')
+    try {
+        [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+            wallet.getBalance(POOL_BASE_TOKEN!!),
+            wallet.getBalance(POOL_QUOTE_TOKEN!!),
+        ]);
+    } catch (error) {
+        console.log('FETCH BALANCES ERROR:', error);
+        fetchBalancesRetry(baseTokenBalance, quoteTokenBalance);
+    }
+}
+
 async function runSwaps(wallet: Account) {
     console.log('FETCHING BALANCES....')
-    let [baseTokenBalance, quoteTokenBalance] = await Promise.all([
-        wallet.getBalance(POOL_BASE_TOKEN!!),
-        wallet.getBalance(POOL_QUOTE_TOKEN!!),
-    ]);
+    let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
+    try {
+        [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+            wallet.getBalance(POOL_BASE_TOKEN!!),
+            wallet.getBalance(POOL_QUOTE_TOKEN!!),
+        ]);
+    } catch (error) {
+        console.log('FETCH BALANCES ERROR:', error);
+        fetchBalancesRetry(baseTokenBalance, quoteTokenBalance);
+    }
 
-    console.log('BALANCES: ', baseTokenBalance.toString(), quoteTokenBalance.toString());
-    if (Decimal(baseTokenBalance.toString()).div(10 ** 9).gt(3000)) {
-        await runSwapBaseTokenIn(wallet)
-        await runSwapQuoteTokenIn(wallet)
-    } else if (Decimal(quoteTokenBalance.toString()).div(10 ** 6).gt(10)) {
-        await runSwapQuoteTokenIn(wallet)
-        await runSwapBaseTokenIn(wallet)
+    if (baseTokenBalance && quoteTokenBalance) {
+        console.log('BALANCES: ', baseTokenBalance.toString(), quoteTokenBalance.toString());
+        if (Decimal(baseTokenBalance.toString()).div(10 ** 9).gt(3000)) {
+            await runSwapBaseTokenIn(wallet)
+            await runSwapQuoteTokenIn(wallet)
+        } else if (Decimal(quoteTokenBalance.toString()).div(10 ** 6).gt(10)) {
+            await runSwapQuoteTokenIn(wallet)
+            await runSwapBaseTokenIn(wallet)
+        }
     }
 }
 
