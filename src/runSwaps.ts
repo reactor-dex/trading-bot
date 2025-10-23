@@ -169,14 +169,14 @@ app.listen(Number(process.env.PORT) || 8080, () => {
     let i = 0;
     for (const wallet of wallets) {
         setInterval(async () => {
-            try {
                 setTimeout(async () => {
-                    await runSwaps(Wallet.fromPrivateKey(wallet, provider));
-                    console.log('SWAP SUCCESS');
+                    try {
+                        await runSwaps(Wallet.fromPrivateKey(wallet, provider));
+                        console.log('SWAP SUCCESS');
+                    } catch (error) {
+                        console.log('SWAP ERROR: ', error);
+                    }
                 }, i += 200);
-            } catch (error) {
-                console.log('SWAP ERROR: ', error);
-            }
         }, Number(process.env.SWAP_INTERVAL || 1000));
     }
 }).on('error', (err) => {
