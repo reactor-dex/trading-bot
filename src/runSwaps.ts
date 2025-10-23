@@ -21,7 +21,7 @@ const {
 } = process.env;
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
-const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
+// const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
 const ETH_ASSET = '0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07';
 
 async function sendMessage(message: string) {
@@ -90,7 +90,7 @@ async function runSwapQuoteTokenIn(wallet: Account) {
     await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
 }
 
-async function fetchBalancesRetry(baseTokenBalance: BigNumberish, quoteTokenBalance: BigNumberish) {
+async function fetchBalancesRetry(wallet: Account, baseTokenBalance: BigNumberish, quoteTokenBalance: BigNumberish) {
     console.log('RETRY FETCH BALANCES')
     try {
         [baseTokenBalance, quoteTokenBalance] = await Promise.all([
@@ -99,7 +99,7 @@ async function fetchBalancesRetry(baseTokenBalance: BigNumberish, quoteTokenBala
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        fetchBalancesRetry(baseTokenBalance, quoteTokenBalance);
+        fetchBalancesRetry(wallet, baseTokenBalance, quoteTokenBalance);
     }
 }
 
@@ -113,7 +113,7 @@ async function runSwaps(wallet: Account) {
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        fetchBalancesRetry(baseTokenBalance, quoteTokenBalance);
+        fetchBalancesRetry(wallet, baseTokenBalance, quoteTokenBalance);
     }
 
     if (baseTokenBalance && quoteTokenBalance) {
