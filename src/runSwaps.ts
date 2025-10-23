@@ -137,10 +137,11 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 
     for (const wallet of wallets) {
         setInterval(async () => {
-            try {   
+            try { 
                 await runSwaps(Wallet.fromPrivateKey(wallet, provider));
+                console.log('SWAP SUCCESS');
             } catch (error) {
-                console.error(error);
+                console.log('SWAP ERROR: ', error);
             }
         }, Number(process.env.SWAP_INTERVAL || 1000));
     }
