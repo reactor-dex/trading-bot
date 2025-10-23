@@ -91,6 +91,7 @@ async function runSwapQuoteTokenIn(wallet: Account) {
 }
 
 async function runSwaps(wallet: Account) {
+    console.log('FETCHING BALANCES....')
     let [baseTokenBalance, quoteTokenBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
