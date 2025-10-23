@@ -112,13 +112,9 @@ async function fetchBalancesRetry(wallet: Account) {
 }
 
 async function runSwaps(wallet: Account) {
-    console.log('FETCHING BALANCES....', POOL_BASE_TOKEN, POOL_QUOTE_TOKEN)
+    console.log('FETCHING BALANCES....')
     let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
     try {
-        console.log('FETCH BASE TOKEN BALANCE', wallet);
-        baseTokenBalance = await wallet.getBalance(POOL_BASE_TOKEN);
-        console.log('BASE BAANCE', baseTokenBalance);
-
         [baseTokenBalance, quoteTokenBalance] = await Promise.all([
             wallet.getBalance(POOL_BASE_TOKEN!!),
             wallet.getBalance(POOL_QUOTE_TOKEN!!),
