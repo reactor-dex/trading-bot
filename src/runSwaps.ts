@@ -100,8 +100,9 @@ async function fetchBalancesRetry(wallet: Account) {
             wallet.getBalance(POOL_QUOTE_TOKEN!!),
         ]);
     } catch (error) {
-        console.log('FETCH BALANCES ERROR:', error);
-        return await fetchBalancesRetry(wallet);
+        console.log('RETRY FETCH BALANCES ERROR:', error);
+        return [];
+        // return await fetchBalancesRetry(wallet);
     }
 }
 
@@ -109,7 +110,7 @@ async function runSwaps(wallet: Account) {
     console.log('FETCHING BALANCES....', POOL_BASE_TOKEN, POOL_QUOTE_TOKEN)
     let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
     try {
-        console.log('FETCH BASE TOKEN BALANCE');
+        console.log('FETCH BASE TOKEN BALANCE', wallet);
         baseTokenBalance = await wallet.getBalance(POOL_BASE_TOKEN);
         console.log('BASE BAANCE', baseTokenBalance);
 
@@ -119,7 +120,7 @@ async function runSwaps(wallet: Account) {
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        [baseTokenBalance, quoteTokenBalance] = await fetchBalancesRetry(wallet);
+        // [baseTokenBalance, quoteTokenBalance] = await fetchBalancesRetry(wallet);
     }
 
     if (baseTokenBalance && quoteTokenBalance) {
