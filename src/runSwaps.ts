@@ -90,16 +90,18 @@ async function runSwapQuoteTokenIn(wallet: Account) {
     await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
 }
 
-async function fetchBalancesRetry(wallet: Account, baseTokenBalance: BigNumberish, quoteTokenBalance: BigNumberish) {
+async function fetchBalancesRetry(wallet: Account) {
     console.log('RETRY FETCH BALANCES')
+    // let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
+
     try {
-        [baseTokenBalance, quoteTokenBalance] = await Promise.all([
+        return await Promise.all([
             wallet.getBalance(POOL_BASE_TOKEN!!),
             wallet.getBalance(POOL_QUOTE_TOKEN!!),
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        fetchBalancesRetry(wallet, baseTokenBalance, quoteTokenBalance);
+        return await fetchBalancesRetry(wallet);
     }
 }
 
@@ -113,7 +115,7 @@ async function runSwaps(wallet: Account) {
         ]);
     } catch (error) {
         console.log('FETCH BALANCES ERROR:', error);
-        fetchBalancesRetry(wallet, baseTokenBalance, quoteTokenBalance);
+        [baseTokenBalance, quoteTokenBalance] = await fetchBalancesRetry(wallet);
     }
 
     if (baseTokenBalance && quoteTokenBalance) {
