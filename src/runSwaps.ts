@@ -4,7 +4,7 @@ import express from 'express';
 import * as dotenv from 'dotenv';
 import { Account, BigNumberish, BN, Provider, Wallet } from 'fuels';
 import { FeeAmount, swapExactIn } from 'reactor-sdk-ts';
-import { Bot } from 'grammy';
+import { Bot, BotError, GrammyError } from 'grammy';
 import Decimal from 'decimal.js';
 
 dotenv.config();
@@ -27,8 +27,11 @@ const ETH_ASSET = '0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f195
 async function sendMessage(message: string) {
     try {
         await bot.api.sendMessage('@reactor_bot_status', message);
-    } catch (error) {
-        console.error(error);
+    } catch (error: unknown) {
+        // console.error(error);
+        setTimeout(async () => {
+            await sendMessage(message);
+        }, (error as GrammyError).parameters.retry_after! * 1000);
     }
 }
 
