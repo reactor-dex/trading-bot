@@ -3,8 +3,8 @@ import express from 'express';
 
 import * as dotenv from 'dotenv';
 import { Account, BigNumberish, BN, Provider, Wallet } from 'fuels';
-import { FeeAmount, swapExactIn } from 'reactor-sdk-ts';
-import { Bot, BotError, GrammyError } from 'grammy';
+import { swapExactIn } from 'reactor-sdk-ts';
+import { Bot, GrammyError } from 'grammy';
 import Decimal from 'decimal.js';
 
 dotenv.config();
@@ -18,6 +18,7 @@ const {
     BASE_TOKEN_IN_SWAP_AMOUNT,
     QUOTE_TOKEN_IN_SWAP_AMOUNT,
     TG_TOKEN,
+    FEE_TIER,
 } = process.env;
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
@@ -38,7 +39,7 @@ async function sendMessage(message: string) {
 async function runSwapBaseTokenIn(wallet: Account) {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = FeeAmount.LOW
+    const feeTier = Number(FEE_TIER!!)
     const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
 
     let tokenIn = baseToken
@@ -67,7 +68,7 @@ async function runSwapBaseTokenIn(wallet: Account) {
 async function runSwapQuoteTokenIn(wallet: Account) {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = FeeAmount.LOW
+    const feeTier = Number(FEE_TIER!!)
     const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
 
     let tokenIn = quoteToken
