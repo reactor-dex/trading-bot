@@ -12,6 +12,7 @@ const {
     POOL_QUOTE_TOKEN,
     BASE_TOKEN_IN_SWAP_AMOUNT,
     QUOTE_TOKEN_IN_SWAP_AMOUNT,
+    FEE_TIER
 } = process.env;
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
@@ -20,7 +21,7 @@ const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
 async function runSwapBaseTokenIn() {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = FeeAmount.LOW
+    const feeTier = Number(FEE_TIER!!)
     const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
 
     let tokenIn = baseToken
@@ -42,7 +43,7 @@ async function runSwapBaseTokenIn() {
 async function runSwapQuoteTokenIn() {
     const baseToken = POOL_BASE_TOKEN!!
     const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = FeeAmount.LOW
+    const feeTier = Number(FEE_TIER!!)
     const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
 
     let tokenIn = quoteToken
