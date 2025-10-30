@@ -1,11 +1,19 @@
 import cors from 'cors';
-import express from 'express';
-
-import * as dotenv from 'dotenv';
-import { Account, BigNumberish, BN, Provider, Wallet } from 'fuels';
-import { swapExactIn } from 'reactor-sdk-ts';
-import { Bot, GrammyError } from 'grammy';
 import Decimal from 'decimal.js';
+import * as dotenv from 'dotenv';
+import express from 'express';
+import {
+    Account,
+    BigNumberish,
+    BN,
+    Provider,
+    Wallet,
+} from 'fuels';
+import {
+    Bot,
+    GrammyError,
+} from 'grammy';
+import { swapExactIn } from 'reactor-sdk-ts';
 
 dotenv.config();
 
@@ -37,15 +45,15 @@ async function sendMessage(message: string) {
 }
 
 async function runSwapBaseTokenIn(wallet: Account) {
-    const baseToken = POOL_BASE_TOKEN!!
-    const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = Number(FEE_TIER!!)
-    const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
+    const baseToken = POOL_BASE_TOKEN!!;
+    const quoteToken = POOL_QUOTE_TOKEN!!;
+    const feeTier = Number(FEE_TIER!!);
+    const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier];
 
-    let tokenIn = baseToken
-    let tokenOut = quoteToken
+    let tokenIn = baseToken;
+    let tokenOut = quoteToken;
     let balance = await wallet.getBalance(baseToken);
-    let minAmountOut = 0
+    let minAmountOut = 0;
     let swapRes = await swapExactIn(
         REACTOR_CONTRACT_ADDRESS!!,
         wallet,
@@ -53,28 +61,38 @@ async function runSwapBaseTokenIn(wallet: Account) {
         tokenIn,
         tokenOut,
         balance,
-        minAmountOut
+        minAmountOut,
     );
-    console.log(`swap base exact in success: ${swapRes.isStatusSuccess}`)
+    console.log(`swap base exact in success: ${swapRes.isStatusSuccess}`);
 
     const [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
         wallet.getBalance(ETH_ASSET!!),
     ]);
-    await sendMessage(`(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
+    await sendMessage(
+        `(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${Decimal(
+            baseTokenBalance.toString(),
+        )
+            .div(10 ** 9)
+            .toString()} USDC ${Decimal(quoteTokenBalance.toString())
+            .div(10 ** 6)
+            .toString()} ETH ${Decimal(ethBalance.toString())
+            .div(10 ** 9)
+            .toString()}`,
+    );
 }
 
 async function runSwapQuoteTokenIn(wallet: Account) {
-    const baseToken = POOL_BASE_TOKEN!!
-    const quoteToken = POOL_QUOTE_TOKEN!!
-    const feeTier = Number(FEE_TIER!!)
-    const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier]
+    const baseToken = POOL_BASE_TOKEN!!;
+    const quoteToken = POOL_QUOTE_TOKEN!!;
+    const feeTier = Number(FEE_TIER!!);
+    const poolId: [string, string, BigNumberish] = [baseToken, quoteToken, feeTier];
 
-    let tokenIn = quoteToken
-    let tokenOut = baseToken
+    let tokenIn = quoteToken;
+    let tokenOut = baseToken;
     let balance = await wallet.getBalance(quoteToken);
-    let minAmountOut = 0
+    let minAmountOut = 0;
     let swapRes = await swapExactIn(
         REACTOR_CONTRACT_ADDRESS!!,
         wallet,
@@ -82,20 +100,30 @@ async function runSwapQuoteTokenIn(wallet: Account) {
         tokenIn,
         tokenOut,
         balance,
-        minAmountOut
+        minAmountOut,
     );
-    console.log(`swap quote exact in success: ${swapRes.isStatusSuccess}`)
+    console.log(`swap quote exact in success: ${swapRes.isStatusSuccess}`);
 
     const [baseTokenBalance, quoteTokenBalance, ethBalance] = await Promise.all([
         wallet.getBalance(POOL_BASE_TOKEN!!),
         wallet.getBalance(POOL_QUOTE_TOKEN!!),
         wallet.getBalance(ETH_ASSET!!),
     ]);
-    await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${Decimal(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${Decimal(ethBalance.toString()).div(10 ** 9).toString()}`);
+    await sendMessage(
+        `(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(
+            baseTokenBalance.toString(),
+        )
+            .div(10 ** 9)
+            .toString()} USDC ${Decimal(quoteTokenBalance.toString())
+            .div(10 ** 6)
+            .toString()} ETH ${Decimal(ethBalance.toString())
+            .div(10 ** 9)
+            .toString()}`,
+    );
 }
 
 async function fetchBalancesRetry(wallet: Account) {
-    console.log('RETRY FETCH BALANCES')
+    console.log('RETRY FETCH BALANCES');
     // let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
 
     try {
@@ -116,7 +144,7 @@ async function fetchBalancesRetry(wallet: Account) {
 }
 
 async function runSwaps(wallet: Account) {
-    console.log('FETCHING BALANCES....')
+    console.log('FETCHING BALANCES....');
     let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
     try {
         [baseTokenBalance, quoteTokenBalance] = await Promise.all([
@@ -130,12 +158,20 @@ async function runSwaps(wallet: Account) {
 
     if (baseTokenBalance && quoteTokenBalance) {
         console.log('BALANCES: ', baseTokenBalance.toString(), quoteTokenBalance.toString());
-        if (Decimal(baseTokenBalance.toString()).div(10 ** 9).gt(3000)) {
-            await runSwapBaseTokenIn(wallet)
-            await runSwapQuoteTokenIn(wallet)
-        } else if (Decimal(quoteTokenBalance.toString()).div(10 ** 6).gt(10)) {
-            await runSwapQuoteTokenIn(wallet)
-            await runSwapBaseTokenIn(wallet)
+        if (
+            Decimal(baseTokenBalance.toString())
+                .div(10 ** 9)
+                .gt(3000)
+        ) {
+            await runSwapBaseTokenIn(wallet);
+            await runSwapQuoteTokenIn(wallet);
+        } else if (
+            Decimal(quoteTokenBalance.toString())
+                .div(10 ** 6)
+                .gt(10)
+        ) {
+            await runSwapQuoteTokenIn(wallet);
+            await runSwapBaseTokenIn(wallet);
         }
     }
 }
@@ -154,7 +190,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
     bot.start({
         onStart: () => {
             console.log('Bot started!');
-        }
+        },
     });
 
     const wallets = [
@@ -168,25 +204,42 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         process.env.AMM_PRIVATE_KEY_7,
         process.env.AMM_PRIVATE_KEY_8,
         process.env.AMM_PRIVATE_KEY_9,
-    ].filter(wallet => wallet !== undefined);
+    ].filter((wallet) => wallet !== undefined);
 
-    let i = 0;
-    for (const wallet of wallets) {
-        setInterval(async () => {
-                setTimeout(async () => {
-                    try {
-                        await runSwaps(Wallet.fromPrivateKey(wallet, provider));
-                        console.log('SWAP SUCCESS');
-                    } catch (error) {
-                        console.log('SWAP ERROR: ', error);
-                    }
-                }, i += 200);
-        }, Number(process.env.SWAP_INTERVAL || 1000));
-    }
-}).on('error', (err) => {
+    const baseIntervalMs = Number(process.env.SWAP_INTERVAL || 1000);
+    const jitteredDelay = () => {
+        const factor = 0.5 + Math.random(); // in [0.5, 1.5)
+        return Math.floor(baseIntervalMs * factor);
+    };
+
+    wallets.forEach((walletPk, idx) => {
+        const offsetMs = (1 + Math.floor(Math.random() * 30)) * 1000; // 1-30s random initial offset
+
+        const runOnce = async () => {
+            try {
+                await runSwaps(Wallet.fromPrivateKey(walletPk!!, provider));
+                console.log('SWAP SUCCESS');
+            } catch (error) {
+                console.log('SWAP ERROR: ', error);
+            }
+        };
+
+        const scheduleNext = () => {
+            setTimeout(async () => {
+                await runOnce();
+                scheduleNext();
+            }, jitteredDelay());
+        };
+
+        setTimeout(async () => {
+            await runOnce();
+            scheduleNext();
+        }, offsetMs);
+    });
+}).on('error', (err: unknown) => {
     console.error(err);
 });
 
-app.get('/', (req, res) => {
+app.get('/', (req: express.Request, res: express.Response) => {
     res.end('ok');
 });

@@ -37,12 +37,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const cors_1 = __importDefault(require("cors"));
-const express_1 = __importDefault(require("express"));
-const dotenv = __importStar(require("dotenv"));
-const fuels_1 = require("fuels");
-const reactor_sdk_ts_1 = require("reactor-sdk-ts");
-const grammy_1 = require("grammy");
 const decimal_js_1 = __importDefault(require("decimal.js"));
+const dotenv = __importStar(require("dotenv"));
+const express_1 = __importDefault(require("express"));
+const fuels_1 = require("fuels");
+const grammy_1 = require("grammy");
+const reactor_sdk_ts_1 = require("reactor-sdk-ts");
 dotenv.config();
 const { AMM_PRIVATE_KEY, AMM_PROVIDER_URL, REACTOR_CONTRACT_ADDRESS, POOL_BASE_TOKEN, POOL_QUOTE_TOKEN, BASE_TOKEN_IN_SWAP_AMOUNT, QUOTE_TOKEN_IN_SWAP_AMOUNT, TG_TOKEN, FEE_TIER, } = process.env;
 const provider = new fuels_1.Provider(AMM_PROVIDER_URL);
@@ -75,7 +75,13 @@ async function runSwapBaseTokenIn(wallet) {
         wallet.getBalance(POOL_QUOTE_TOKEN),
         wallet.getBalance(ETH_ASSET),
     ]);
-    await sendMessage(`(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${(0, decimal_js_1.default)(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${(0, decimal_js_1.default)(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString()).div(10 ** 9).toString()}`);
+    await sendMessage(`(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${(0, decimal_js_1.default)(baseTokenBalance.toString())
+        .div(10 ** 9)
+        .toString()} USDC ${(0, decimal_js_1.default)(quoteTokenBalance.toString())
+        .div(10 ** 6)
+        .toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString())
+        .div(10 ** 9)
+        .toString()}`);
 }
 async function runSwapQuoteTokenIn(wallet) {
     const baseToken = POOL_BASE_TOKEN;
@@ -93,7 +99,13 @@ async function runSwapQuoteTokenIn(wallet) {
         wallet.getBalance(POOL_QUOTE_TOKEN),
         wallet.getBalance(ETH_ASSET),
     ]);
-    await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${(0, decimal_js_1.default)(baseTokenBalance.toString()).div(10 ** 9).toString()} USDC ${(0, decimal_js_1.default)(quoteTokenBalance.toString()).div(10 ** 6).toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString()).div(10 ** 9).toString()}`);
+    await sendMessage(`(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${(0, decimal_js_1.default)(baseTokenBalance.toString())
+        .div(10 ** 9)
+        .toString()} USDC ${(0, decimal_js_1.default)(quoteTokenBalance.toString())
+        .div(10 ** 6)
+        .toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString())
+        .div(10 ** 9)
+        .toString()}`);
 }
 async function fetchBalancesRetry(wallet) {
     console.log('RETRY FETCH BALANCES');
@@ -130,11 +142,15 @@ async function runSwaps(wallet) {
     }
     if (baseTokenBalance && quoteTokenBalance) {
         console.log('BALANCES: ', baseTokenBalance.toString(), quoteTokenBalance.toString());
-        if ((0, decimal_js_1.default)(baseTokenBalance.toString()).div(10 ** 9).gt(3000)) {
+        if ((0, decimal_js_1.default)(baseTokenBalance.toString())
+            .div(10 ** 9)
+            .gt(3000)) {
             await runSwapBaseTokenIn(wallet);
             await runSwapQuoteTokenIn(wallet);
         }
-        else if ((0, decimal_js_1.default)(quoteTokenBalance.toString()).div(10 ** 6).gt(10)) {
+        else if ((0, decimal_js_1.default)(quoteTokenBalance.toString())
+            .div(10 ** 6)
+            .gt(10)) {
             await runSwapQuoteTokenIn(wallet);
             await runSwapBaseTokenIn(wallet);
         }
@@ -149,7 +165,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
     bot.start({
         onStart: () => {
             console.log('Bot started!');
-        }
+        },
     });
     const wallets = [
         process.env.AMM_PRIVATE_KEY,
@@ -162,21 +178,34 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         process.env.AMM_PRIVATE_KEY_7,
         process.env.AMM_PRIVATE_KEY_8,
         process.env.AMM_PRIVATE_KEY_9,
-    ].filter(wallet => wallet !== undefined);
-    let i = 0;
-    for (const wallet of wallets) {
-        setInterval(async () => {
+    ].filter((wallet) => wallet !== undefined);
+    const baseIntervalMs = Number(process.env.SWAP_INTERVAL || 1000);
+    const jitteredDelay = () => {
+        const factor = 0.5 + Math.random(); // in [0.5, 1.5)
+        return Math.floor(baseIntervalMs * factor);
+    };
+    wallets.forEach((walletPk, idx) => {
+        const offsetMs = (1 + Math.floor(Math.random() * 30)) * 1000; // 1-30s random initial offset
+        const runOnce = async () => {
+            try {
+                await runSwaps(fuels_1.Wallet.fromPrivateKey(walletPk, provider));
+                console.log('SWAP SUCCESS');
+            }
+            catch (error) {
+                console.log('SWAP ERROR: ', error);
+            }
+        };
+        const scheduleNext = () => {
             setTimeout(async () => {
-                try {
-                    await runSwaps(fuels_1.Wallet.fromPrivateKey(wallet, provider));
-                    console.log('SWAP SUCCESS');
-                }
-                catch (error) {
-                    console.log('SWAP ERROR: ', error);
-                }
-            }, i += 200);
-        }, Number(process.env.SWAP_INTERVAL || 1000));
-    }
+                await runOnce();
+                scheduleNext();
+            }, jitteredDelay());
+        };
+        setTimeout(async () => {
+            await runOnce();
+            scheduleNext();
+        }, offsetMs);
+    });
 }).on('error', (err) => {
     console.error(err);
 });

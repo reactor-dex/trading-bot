@@ -1,6 +1,9 @@
 # Reactor Pool Trading Bot swap script
+
 ## Configuration for mainnet FUEL/USDC pool
+
 Create `.env` :
+
 ```
 AMM_PRIVATE_KEY=
 AMM_PROVIDER_URL=https://mainnet.fuel.network/v1/graphql
@@ -19,10 +22,13 @@ FEE_TIER=100
 BASE_TOKEN_IN_SWAP_AMOUNT=1000000000
 QUOTE_TOKEN_IN_SWAP_AMOUNT=3225
 ```
+
 ## Run
+
 ```shell
 npx tsx ./src/runSwaps.ts
 ```
 
 ## Liquidity management, exact out swaps, LP fees collections, etc
+
 More details at https://www.npmjs.com/package/reactor-sdk-ts
