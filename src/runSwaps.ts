@@ -222,7 +222,25 @@ app.listen(Number(process.env.PORT) || 8080, () => {
     };
 
     wallets.forEach((walletPk, idx) => {
-        const offsetMs = initialDelay();
+        // Per-wallet interval override: SWAP_INTERVAL_0..SWAP_INTERVAL_9
+        const overrideEnv = (process.env as Record<string, string | undefined>)[
+            `SWAP_INTERVAL_${idx}`
+        ];
+        const intervalMsForWallet = Number(overrideEnv || baseIntervalMsEnv);
+        const maxMsForWallet = Math.max(intervalMsForWallet, 2000);
+
+        const jitteredDelayForWallet = () => {
+            const minMs = 2000;
+            const range = Math.max(maxMsForWallet - minMs, 0);
+            return minMs + Math.floor(Math.random() * (range + 1));
+        };
+
+        const initialDelayForWallet = () => {
+            const extraRange = 2 * maxMsForWallet;
+            return maxMsForWallet + Math.floor(Math.random() * (extraRange + 1));
+        };
+
+        const offsetMs = initialDelayForWallet();
 
         const runOnce = async () => {
             try {
@@ -237,7 +255,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
             setTimeout(async () => {
                 await runOnce();
                 scheduleNext();
-            }, jitteredDelay());
+            }, jitteredDelayForWallet());
         };
 
         setTimeout(async () => {
