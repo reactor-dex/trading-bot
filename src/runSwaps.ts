@@ -1,4 +1,5 @@
 import cors from 'cors';
+import { createHash } from 'crypto';
 import Decimal from 'decimal.js';
 import * as dotenv from 'dotenv';
 import express from 'express';
@@ -9,7 +10,6 @@ import {
     Provider,
     Wallet,
 } from 'fuels';
-import { createHash } from 'crypto';
 import {
     Bot,
     GrammyError,
@@ -72,7 +72,9 @@ async function runSwapBaseTokenIn(wallet: Account) {
         wallet.getBalance(ETH_ASSET!!),
     ]);
     await sendMessage(
-        `(${wallet.address.b256Address}): Swaps FUEL->USDC completed at ${new Date().toISOString()}! FUEL ${Decimal(
+        `(${
+            wallet.address.b256Address
+        }): Swaps FUEL->USDC completed at ${new Date().toISOString()}! FUEL ${Decimal(
             baseTokenBalance.toString(),
         )
             .div(10 ** 9)
@@ -111,7 +113,9 @@ async function runSwapQuoteTokenIn(wallet: Account) {
         wallet.getBalance(ETH_ASSET!!),
     ]);
     await sendMessage(
-        `(${wallet.address.b256Address}): Swaps USDC->FUEL completed at ${new Date().toISOString()}! FUEL ${Decimal(
+        `(${
+            wallet.address.b256Address
+        }): Swaps USDC->FUEL completed at ${new Date().toISOString()}! FUEL ${Decimal(
             baseTokenBalance.toString(),
         )
             .div(10 ** 9)
@@ -273,19 +277,35 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 
         const scheduleNext = () => {
             const nextDelay = jitteredDelayForWallet();
+            const scheduledAt = Date.now() + nextDelay;
             console.log(
-                `WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(
-                    Date.now() + nextDelay,
-                ).toISOString()}`,
+                `WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(scheduledAt).toISOString()}`,
             );
             setTimeout(async () => {
+                const firedAt = Date.now();
+                console.log(
+                    `WALLET[${idx}] timerFiredAt=${new Date(firedAt).toISOString()}, driftMs=${firedAt - scheduledAt}`,
+                );
+                const execStart = Date.now();
                 await runOnce();
+                const execEnd = Date.now();
+                console.log(
+                    `WALLET[${idx}] execDurationMs=${execEnd - execStart}`,
+                );
                 scheduleNext();
             }, nextDelay);
         };
 
         setTimeout(async () => {
+            const firedAt0 = Date.now();
+            const scheduledAt0 = firedAt0 - offsetMs; // approximate schedule time based on current
+            console.log(
+                `WALLET[${idx}] initialTimerFiredAt=${new Date(firedAt0).toISOString()}, initialDriftMs=${firedAt0 - scheduledAt0}`,
+            );
+            const execStart0 = Date.now();
             await runOnce();
+            const execEnd0 = Date.now();
+            console.log(`WALLET[${idx}] initialExecDurationMs=${execEnd0 - execStart0}`);
             scheduleNext();
         }, offsetMs);
     });

@@ -37,11 +37,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const cors_1 = __importDefault(require("cors"));
+const crypto_1 = require("crypto");
 const decimal_js_1 = __importDefault(require("decimal.js"));
 const dotenv = __importStar(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const fuels_1 = require("fuels");
-const crypto_1 = require("crypto");
 const grammy_1 = require("grammy");
 const reactor_sdk_ts_1 = require("reactor-sdk-ts");
 dotenv.config();
@@ -235,14 +235,26 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         };
         const scheduleNext = () => {
             const nextDelay = jitteredDelayForWallet();
-            console.log(`WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(Date.now() + nextDelay).toISOString()}`);
+            const scheduledAt = Date.now() + nextDelay;
+            console.log(`WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(scheduledAt).toISOString()}`);
             setTimeout(async () => {
+                const firedAt = Date.now();
+                console.log(`WALLET[${idx}] timerFiredAt=${new Date(firedAt).toISOString()}, driftMs=${firedAt - scheduledAt}`);
+                const execStart = Date.now();
                 await runOnce();
+                const execEnd = Date.now();
+                console.log(`WALLET[${idx}] execDurationMs=${execEnd - execStart}`);
                 scheduleNext();
             }, nextDelay);
         };
         setTimeout(async () => {
+            const firedAt0 = Date.now();
+            const scheduledAt0 = firedAt0 - offsetMs; // approximate schedule time based on current
+            console.log(`WALLET[${idx}] initialTimerFiredAt=${new Date(firedAt0).toISOString()}, initialDriftMs=${firedAt0 - scheduledAt0}`);
+            const execStart0 = Date.now();
             await runOnce();
+            const execEnd0 = Date.now();
+            console.log(`WALLET[${idx}] initialExecDurationMs=${execEnd0 - execStart0}`);
             scheduleNext();
         }, offsetMs);
     });
