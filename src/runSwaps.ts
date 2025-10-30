@@ -206,10 +206,13 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         process.env.AMM_PRIVATE_KEY_9,
     ].filter((wallet) => wallet !== undefined);
 
-    const baseIntervalMs = Number(process.env.SWAP_INTERVAL || 1000);
+    const baseIntervalMsEnv = Number(process.env.SWAP_INTERVAL || 10000);
+    const maxIntervalMs = Math.max(baseIntervalMsEnv, 2000); // treat as max, enforce >= 2s
     const jitteredDelay = () => {
-        const factor = 0.5 + Math.random(); // in [0.5, 1.5)
-        return Math.floor(baseIntervalMs * factor);
+        const minMs = 2000;
+        const maxMs = maxIntervalMs;
+        const range = Math.max(maxMs - minMs, 0);
+        return minMs + Math.floor(Math.random() * (range + 1)); // uniform [2s, max]
     };
 
     wallets.forEach((walletPk, idx) => {
