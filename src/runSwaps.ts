@@ -214,9 +214,15 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         const range = Math.max(maxMs - minMs, 0);
         return minMs + Math.floor(Math.random() * (range + 1)); // uniform [2s, max]
     };
+    const initialDelay = () => {
+        // Make initial delay clearly de-synchronized: uniform in [max, 3*max]
+        const maxMs = maxIntervalMs;
+        const extraRange = 2 * maxMs;
+        return maxMs + Math.floor(Math.random() * (extraRange + 1));
+    };
 
     wallets.forEach((walletPk, idx) => {
-        const offsetMs = (1 + Math.floor(Math.random() * 30)) * 1000; // 1-30s random initial offset
+        const offsetMs = initialDelay();
 
         const runOnce = async () => {
             try {

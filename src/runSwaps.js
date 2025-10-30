@@ -179,7 +179,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         process.env.AMM_PRIVATE_KEY_8,
         process.env.AMM_PRIVATE_KEY_9,
     ].filter((wallet) => wallet !== undefined);
-    const baseIntervalMsEnv = Number(process.env.SWAP_INTERVAL || 1000);
+    const baseIntervalMsEnv = Number(process.env.SWAP_INTERVAL || 10000);
     const maxIntervalMs = Math.max(baseIntervalMsEnv, 2000); // treat as max, enforce >= 2s
     const jitteredDelay = () => {
         const minMs = 2000;
@@ -187,8 +187,14 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         const range = Math.max(maxMs - minMs, 0);
         return minMs + Math.floor(Math.random() * (range + 1)); // uniform [2s, max]
     };
+    const initialDelay = () => {
+        // Make initial delay clearly de-synchronized: uniform in [max, 3*max]
+        const maxMs = maxIntervalMs;
+        const extraRange = 2 * maxMs;
+        return maxMs + Math.floor(Math.random() * (extraRange + 1));
+    };
     wallets.forEach((walletPk, idx) => {
-        const offsetMs = (1 + Math.floor(Math.random() * 30)) * 1000; // 1-30s random initial offset
+        const offsetMs = initialDelay();
         const runOnce = async () => {
             try {
                 await runSwaps(fuels_1.Wallet.fromPrivateKey(walletPk, provider));
