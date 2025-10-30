@@ -45,7 +45,7 @@ const fuels_1 = require("fuels");
 const grammy_1 = require("grammy");
 const reactor_sdk_ts_1 = require("reactor-sdk-ts");
 dotenv.config();
-const { AMM_PRIVATE_KEY, AMM_PROVIDER_URL, REACTOR_CONTRACT_ADDRESS, POOL_BASE_TOKEN, POOL_QUOTE_TOKEN, BASE_TOKEN_IN_SWAP_AMOUNT, QUOTE_TOKEN_IN_SWAP_AMOUNT, TG_TOKEN, FEE_TIER, } = process.env;
+const { AMM_PRIVATE_KEY, AMM_PROVIDER_URL, REACTOR_CONTRACT_ADDRESS, POOL_BASE_TOKEN, POOL_QUOTE_TOKEN, BASE_TOKEN_IN_SWAP_AMOUNT, QUOTE_TOKEN_IN_SWAP_AMOUNT, TG_TOKEN, FEE_TIER, STATE_API_KEY, } = process.env;
 const provider = new fuels_1.Provider(AMM_PROVIDER_URL);
 // const wallet: Account = Wallet.fromPrivateKey(AMM_PRIVATE_KEY!!, provider);
 const ETH_ASSET = '0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07';
@@ -60,6 +60,7 @@ async function sendMessage(message) {
         }, error.parameters.retry_after * 1000);
     }
 }
+const walletStates = [];
 async function runSwapBaseTokenIn(wallet) {
     const baseToken = POOL_BASE_TOKEN;
     const quoteToken = POOL_QUOTE_TOKEN;
@@ -83,6 +84,7 @@ async function runSwapBaseTokenIn(wallet) {
         .toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString())
         .div(10 ** 9)
         .toString()}`);
+    return swapRes.isStatusSuccess;
 }
 async function runSwapQuoteTokenIn(wallet) {
     const baseToken = POOL_BASE_TOKEN;
@@ -107,6 +109,7 @@ async function runSwapQuoteTokenIn(wallet) {
         .toString()} ETH ${(0, decimal_js_1.default)(ethBalance.toString())
         .div(10 ** 9)
         .toString()}`);
+    return swapRes.isStatusSuccess;
 }
 async function fetchBalancesRetry(wallet) {
     console.log('RETRY FETCH BALANCES');
@@ -128,7 +131,7 @@ async function fetchBalancesRetry(wallet) {
         return await fetchBalancesRetry(wallet);
     }
 }
-async function runSwaps(wallet) {
+async function runSwaps(wallet, walletIdx) {
     console.log('FETCHING BALANCES....');
     let [baseTokenBalance, quoteTokenBalance] = [new fuels_1.BN(0), new fuels_1.BN(0)];
     try {
@@ -146,14 +149,34 @@ async function runSwaps(wallet) {
         if ((0, decimal_js_1.default)(baseTokenBalance.toString())
             .div(10 ** 9)
             .gt(3000)) {
-            await runSwapBaseTokenIn(wallet);
-            await runSwapQuoteTokenIn(wallet);
+            const res1 = await runSwapBaseTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'BASE_TO_QUOTE',
+                success: res1,
+            };
+            const res2 = await runSwapQuoteTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'QUOTE_TO_BASE',
+                success: res2,
+            };
         }
         else if ((0, decimal_js_1.default)(quoteTokenBalance.toString())
             .div(10 ** 6)
             .gt(10)) {
-            await runSwapQuoteTokenIn(wallet);
-            await runSwapBaseTokenIn(wallet);
+            const res1 = await runSwapQuoteTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'QUOTE_TO_BASE',
+                success: res1,
+            };
+            const res2 = await runSwapBaseTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'BASE_TO_QUOTE',
+                success: res2,
+            };
         }
     }
 }
@@ -223,10 +246,18 @@ app.listen(Number(process.env.PORT) || 8080, () => {
             return minMs + Math.floor(rng() * (range + 1));
         };
         const offsetMs = initialDelayForWallet();
+        const address = fuels_1.Wallet.fromPrivateKey(walletPk, provider).address.b256Address;
+        walletStates[idx] = {
+            walletIdx: idx,
+            address,
+            intervalMaxMs: maxMsForWallet,
+            rngSeed: seed >>> 0,
+            nextRunAt: Date.now() + offsetMs,
+        };
         console.log(`WALLET[${idx}] init: intervalMs=${maxMsForWallet}ms, offsetMs=${offsetMs}ms, startAt=${new Date(Date.now() + offsetMs).toISOString()}`);
         const runOnce = async () => {
             try {
-                await runSwaps(fuels_1.Wallet.fromPrivateKey(walletPk, provider));
+                await runSwaps(fuels_1.Wallet.fromPrivateKey(walletPk, provider), idx);
                 console.log('SWAP SUCCESS');
             }
             catch (error) {
@@ -235,6 +266,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         };
         const scheduleNext = () => {
             const nextDelay = jitteredDelayForWallet();
+            walletStates[idx].nextRunAt = Date.now() + nextDelay;
             const scheduledAt = Date.now() + nextDelay;
             console.log(`WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(scheduledAt).toISOString()}`);
             setTimeout(async () => {
@@ -263,5 +295,17 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 });
 app.get('/', (req, res) => {
     res.end('ok');
+});
+app.get('/state', (req, res) => {
+    if (!STATE_API_KEY) {
+        res.status(503).json({ error: 'STATE_API_KEY not configured' });
+        return;
+    }
+    const apiKey = req.header('x-api-key');
+    if (apiKey !== STATE_API_KEY) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+    }
+    res.json({ serverTime: new Date().toISOString(), wallets: walletStates });
 });
 //# sourceMappingURL=runSwaps.js.map

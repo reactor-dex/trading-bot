@@ -28,6 +28,7 @@ const {
     QUOTE_TOKEN_IN_SWAP_AMOUNT,
     TG_TOKEN,
     FEE_TIER,
+    STATE_API_KEY,
 } = process.env;
 
 const provider = new Provider(AMM_PROVIDER_URL!!);
@@ -45,7 +46,24 @@ async function sendMessage(message: string) {
     }
 }
 
-async function runSwapBaseTokenIn(wallet: Account) {
+type LastResult = {
+    at: string;
+    direction: 'BASE_TO_QUOTE' | 'QUOTE_TO_BASE';
+    success: boolean;
+};
+
+type WalletState = {
+    walletIdx: number;
+    address?: string;
+    intervalMaxMs: number;
+    rngSeed: number;
+    nextRunAt: number | null;
+    lastResult?: LastResult;
+};
+
+const walletStates: WalletState[] = [];
+
+async function runSwapBaseTokenIn(wallet: Account): Promise<boolean> {
     const baseToken = POOL_BASE_TOKEN!!;
     const quoteToken = POOL_QUOTE_TOKEN!!;
     const feeTier = Number(FEE_TIER!!);
@@ -84,9 +102,10 @@ async function runSwapBaseTokenIn(wallet: Account) {
             .div(10 ** 9)
             .toString()}`,
     );
+    return swapRes.isStatusSuccess;
 }
 
-async function runSwapQuoteTokenIn(wallet: Account) {
+async function runSwapQuoteTokenIn(wallet: Account): Promise<boolean> {
     const baseToken = POOL_BASE_TOKEN!!;
     const quoteToken = POOL_QUOTE_TOKEN!!;
     const feeTier = Number(FEE_TIER!!);
@@ -125,6 +144,7 @@ async function runSwapQuoteTokenIn(wallet: Account) {
             .div(10 ** 9)
             .toString()}`,
     );
+    return swapRes.isStatusSuccess;
 }
 
 async function fetchBalancesRetry(wallet: Account) {
@@ -148,7 +168,7 @@ async function fetchBalancesRetry(wallet: Account) {
     }
 }
 
-async function runSwaps(wallet: Account) {
+async function runSwaps(wallet: Account, walletIdx: number) {
     console.log('FETCHING BALANCES....');
     let [baseTokenBalance, quoteTokenBalance] = [new BN(0), new BN(0)];
     try {
@@ -168,15 +188,35 @@ async function runSwaps(wallet: Account) {
                 .div(10 ** 9)
                 .gt(3000)
         ) {
-            await runSwapBaseTokenIn(wallet);
-            await runSwapQuoteTokenIn(wallet);
+            const res1 = await runSwapBaseTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'BASE_TO_QUOTE',
+                success: res1,
+            };
+            const res2 = await runSwapQuoteTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'QUOTE_TO_BASE',
+                success: res2,
+            };
         } else if (
             Decimal(quoteTokenBalance.toString())
                 .div(10 ** 6)
                 .gt(10)
         ) {
-            await runSwapQuoteTokenIn(wallet);
-            await runSwapBaseTokenIn(wallet);
+            const res1 = await runSwapQuoteTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'QUOTE_TO_BASE',
+                success: res1,
+            };
+            const res2 = await runSwapBaseTokenIn(wallet);
+            walletStates[walletIdx].lastResult = {
+                at: new Date().toISOString(),
+                direction: 'BASE_TO_QUOTE',
+                success: res2,
+            };
         }
     }
 }
@@ -260,6 +300,14 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         };
 
         const offsetMs = initialDelayForWallet();
+        const address = Wallet.fromPrivateKey(walletPk!!, provider).address.b256Address;
+        walletStates[idx] = {
+            walletIdx: idx,
+            address,
+            intervalMaxMs: maxMsForWallet,
+            rngSeed: seed >>> 0,
+            nextRunAt: Date.now() + offsetMs,
+        };
         console.log(
             `WALLET[${idx}] init: intervalMs=${maxMsForWallet}ms, offsetMs=${offsetMs}ms, startAt=${new Date(
                 Date.now() + offsetMs,
@@ -268,7 +316,7 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 
         const runOnce = async () => {
             try {
-                await runSwaps(Wallet.fromPrivateKey(walletPk!!, provider));
+                await runSwaps(Wallet.fromPrivateKey(walletPk!!, provider), idx);
                 console.log('SWAP SUCCESS');
             } catch (error) {
                 console.log('SWAP ERROR: ', error);
@@ -277,21 +325,24 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 
         const scheduleNext = () => {
             const nextDelay = jitteredDelayForWallet();
+            walletStates[idx].nextRunAt = Date.now() + nextDelay;
             const scheduledAt = Date.now() + nextDelay;
             console.log(
-                `WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(scheduledAt).toISOString()}`,
+                `WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(
+                    scheduledAt,
+                ).toISOString()}`,
             );
             setTimeout(async () => {
                 const firedAt = Date.now();
                 console.log(
-                    `WALLET[${idx}] timerFiredAt=${new Date(firedAt).toISOString()}, driftMs=${firedAt - scheduledAt}`,
+                    `WALLET[${idx}] timerFiredAt=${new Date(firedAt).toISOString()}, driftMs=${
+                        firedAt - scheduledAt
+                    }`,
                 );
                 const execStart = Date.now();
                 await runOnce();
                 const execEnd = Date.now();
-                console.log(
-                    `WALLET[${idx}] execDurationMs=${execEnd - execStart}`,
-                );
+                console.log(`WALLET[${idx}] execDurationMs=${execEnd - execStart}`);
                 scheduleNext();
             }, nextDelay);
         };
@@ -300,7 +351,9 @@ app.listen(Number(process.env.PORT) || 8080, () => {
             const firedAt0 = Date.now();
             const scheduledAt0 = firedAt0 - offsetMs; // approximate schedule time based on current
             console.log(
-                `WALLET[${idx}] initialTimerFiredAt=${new Date(firedAt0).toISOString()}, initialDriftMs=${firedAt0 - scheduledAt0}`,
+                `WALLET[${idx}] initialTimerFiredAt=${new Date(
+                    firedAt0,
+                ).toISOString()}, initialDriftMs=${firedAt0 - scheduledAt0}`,
             );
             const execStart0 = Date.now();
             await runOnce();
@@ -315,4 +368,17 @@ app.listen(Number(process.env.PORT) || 8080, () => {
 
 app.get('/', (req: express.Request, res: express.Response) => {
     res.end('ok');
+});
+
+app.get('/state', (req: express.Request, res: express.Response) => {
+    if (!STATE_API_KEY) {
+        res.status(503).json({ error: 'STATE_API_KEY not configured' });
+        return;
+    }
+    const apiKey = req.header('x-api-key');
+    if (apiKey !== STATE_API_KEY) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+    }
+    res.json({ serverTime: new Date().toISOString(), wallets: walletStates });
 });
