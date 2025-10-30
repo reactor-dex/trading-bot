@@ -9,6 +9,7 @@ import {
     Provider,
     Wallet,
 } from 'fuels';
+import { createHash } from 'crypto';
 import {
     Bot,
     GrammyError,
@@ -71,7 +72,7 @@ async function runSwapBaseTokenIn(wallet: Account) {
         wallet.getBalance(ETH_ASSET!!),
     ]);
     await sendMessage(
-        `(${wallet.address.b256Address}): Swaps FUEL->USDC completed! FUEL ${Decimal(
+        `(${wallet.address.b256Address}): Swaps FUEL->USDC completed at ${new Date().toISOString()}! FUEL ${Decimal(
             baseTokenBalance.toString(),
         )
             .div(10 ** 9)
@@ -110,7 +111,7 @@ async function runSwapQuoteTokenIn(wallet: Account) {
         wallet.getBalance(ETH_ASSET!!),
     ]);
     await sendMessage(
-        `(${wallet.address.b256Address}): Swaps USDC->FUEL completed! FUEL ${Decimal(
+        `(${wallet.address.b256Address}): Swaps USDC->FUEL completed at ${new Date().toISOString()}! FUEL ${Decimal(
             baseTokenBalance.toString(),
         )
             .div(10 ** 9)
@@ -222,6 +223,17 @@ app.listen(Number(process.env.PORT) || 8080, () => {
     };
 
     wallets.forEach((walletPk, idx) => {
+        // Per-wallet seeded RNG for independence
+        const seedBuf = createHash('sha256').update(String(walletPk)).digest();
+        let seed = seedBuf.readUInt32BE(0) ^ (Date.now() & 0xffffffff);
+        const rng = () => {
+            // mulberry32 PRNG
+            seed = (seed + 0x6d2b79f5) >>> 0;
+            let t = seed;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
         // Per-wallet interval override: SWAP_INTERVAL_0..SWAP_INTERVAL_9
         const overrideEnv = (process.env as Record<string, string | undefined>)[
             `SWAP_INTERVAL_${idx}`
@@ -232,15 +244,23 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         const jitteredDelayForWallet = () => {
             const minMs = 2000;
             const range = Math.max(maxMsForWallet - minMs, 0);
-            return minMs + Math.floor(Math.random() * (range + 1));
+            return minMs + Math.floor(rng() * (range + 1));
         };
 
         const initialDelayForWallet = () => {
-            const extraRange = 2 * maxMsForWallet;
-            return maxMsForWallet + Math.floor(Math.random() * (extraRange + 1));
+            // Fixed spread for initial start: uniform in [2s, 120s]
+            const minMs = 2000;
+            const maxMs = 120000;
+            const range = maxMs - minMs;
+            return minMs + Math.floor(rng() * (range + 1));
         };
 
         const offsetMs = initialDelayForWallet();
+        console.log(
+            `WALLET[${idx}] init: intervalMs=${maxMsForWallet}ms, offsetMs=${offsetMs}ms, startAt=${new Date(
+                Date.now() + offsetMs,
+            ).toISOString()}`,
+        );
 
         const runOnce = async () => {
             try {
@@ -252,10 +272,16 @@ app.listen(Number(process.env.PORT) || 8080, () => {
         };
 
         const scheduleNext = () => {
+            const nextDelay = jitteredDelayForWallet();
+            console.log(
+                `WALLET[${idx}] nextDelay=${nextDelay}ms, nextAt=${new Date(
+                    Date.now() + nextDelay,
+                ).toISOString()}`,
+            );
             setTimeout(async () => {
                 await runOnce();
                 scheduleNext();
-            }, jitteredDelayForWallet());
+            }, nextDelay);
         };
 
         setTimeout(async () => {
