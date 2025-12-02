@@ -3,17 +3,8 @@ import { createHash } from 'crypto';
 import Decimal from 'decimal.js';
 import * as dotenv from 'dotenv';
 import express from 'express';
-import {
-    Account,
-    BigNumberish,
-    BN,
-    Provider,
-    Wallet,
-} from 'fuels';
-import {
-    Bot,
-    GrammyError,
-} from 'grammy';
+import { Account, BigNumberish, BN, Provider, Wallet } from 'fuels';
+import { Bot, GrammyError } from 'grammy';
 import { swapExactIn } from 'reactor-sdk-ts';
 
 dotenv.config();
@@ -36,8 +27,9 @@ const provider = new Provider(AMM_PROVIDER_URL!!);
 const ETH_ASSET = '0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07';
 
 async function sendMessage(message: string) {
+    if (!bot) return
     try {
-        await bot.api.sendMessage('@reactor_bot_status', message);
+        await bot!!.api.sendMessage('@reactor_bot_status', message);
     } catch (error: unknown) {
         // console.error(error);
         setTimeout(async () => {
@@ -227,16 +219,19 @@ app.use(cors());
 
 app.use(express.json());
 
-const bot = new Bot(TG_TOKEN!!);
+const bot = TG_TOKEN ? new Bot(TG_TOKEN!!) : null;
 
 app.listen(Number(process.env.PORT) || 8080, () => {
     console.log(`Server is running on port ${process.env.PORT || 8080}`);
 
-    bot.start({
-        onStart: () => {
-            console.log('Bot started!');
-        },
-    });
+    if (bot) {
+        bot.start({
+            onStart: () => {
+                console.log('Bot started!');
+            },
+        });
+    }
+
 
     const wallets = [
         process.env.AMM_PRIVATE_KEY,
